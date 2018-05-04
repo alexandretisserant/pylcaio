@@ -180,8 +180,7 @@ class LCAIO(object):
                  pd.concat([i2s(self.A_bf), i2s(self.A_bb)], axis=1),
                  pd.concat([i2s(self.A_io_f), i2s(self.A_io)], axis=1)], axis=0
                  )
-        return a.reindex_axis(self.PRO.index, 0).reindex_axis(self.PRO.index,1
-                                                              ).fillna(0.0)
+        return a.reindex(index = self.PRO.index, columns = self.PRO.index).fillna(0.0)
 
     @property
     def F(self):
@@ -189,22 +188,20 @@ class LCAIO(object):
         f = pd.concat([pd.concat([i2s(self.F_f), i2s(self.F_b)], axis=1),
                       pd.concat([i2s(self.F_io_f), i2s(self.F_io)], axis=1)],
                      axis=0)
-        return f.reindex_axis(self.STR_all.index, 0).reindex_axis(self.PRO.index,1
-                ).fillna(0.0)
+        return f.reindex(index = self.STR_all.index, columns = self.PRO.index).fillna(0.0)
 
     @property
     def C_all(self):
         """ Characterisation factors for whole system """
         return concat_keep_order([i2s(self.C), i2s(self.C_io)],
                                  i2s(self.STR_all).index,
-                                 order_axis=[1])
+                                 order_axis=['columns'])
 
     @property
     def y(self):
         """ Final demand for whole system """
         y_pro =  pd.concat([self.y_f, self.y_b, self.y_io], axis=0)
-        return y_pro.reindex_axis(self.PRO.index, axis=0).fillna(0.0)
-
+        return y_pro.reindex(index = self.PRO.index).fillna(0.0)
 #=============================================================================
 # METHODS
 #=============================================================================
@@ -550,7 +547,7 @@ class LCAIO(object):
         else:
              pass
 
-        self.C_io = C.reindex_axis(self.F_io.index, axis='columns').fillna(0)
+        self.C_io = C.reindex(columns = self.F_io.index).fillna(0)
         IMP_header = extract_header(self.C_io.index.names)
         IMP = np.array([list(i) for i in self.C_io.index.values.tolist()],
                        dtype=object)
@@ -680,7 +677,7 @@ class LCAIO(object):
         """
 
         # Reorder rows in F_f to match indexes of F_b
-        F_f_new = self.F_f.reindex_axis(self.F_b.index, axis=0).fillna(0.0)
+        F_f_new = self.F_f.reindex(index = self.F_b.index).fillna(0.0)
 
         if F_f_new.sum().sum() != self.F_f.sum().sum():
             raise ValueError('Some of the emissions are not conserved during'
@@ -689,7 +686,7 @@ class LCAIO(object):
             self.F_f = F_f_new
 
         # Reorder rows in A_bf to match row order in A_bb
-        A_bf_new = self.A_bf.reindex_axis(self.A_bb.index, axis=0).fillna(0.0)
+        A_bf_new = self.A_bf.reindex(index = self.A_bb.index).fillna(0.0)
         if A_bf_new.sum().sum() != self.A_bf.sum().sum():
             raise ValueError('Some of the product-flows are not conserved'
                     ' during the re-indexing! Will not re-index A_bf')
@@ -747,24 +744,24 @@ class LCAIO(object):
         # concatenate data
         self.A_ff = concat_keep_order([self.A_ff, other.A_ff],
                                       self.PRO_f.index,
-                                      order_axis=[0,1])
+                                      order_axis=['index', 'columns'])
 
 
         self.A_bf = concat_keep_order([self.A_bf, other.A_bf],
                                       self.PRO_f.index,
                                       axis=1,
-                                      order_axis=[1])
+                                      order_axis=['columns'])
 
         self.F_f = concat_keep_order([self.F_f, other.F_f],
                                      self.PRO_f.index,
                                      axis=1,
-                                     order_axis=[1])
+                                     order_axis=['columns'])
 
         if final_demand:
             self.y_f = concat_keep_order([self.y_f, other.y_f],
                                          self.PRO_f.index,
                                          axis=0,
-                                         order_axis=[0])
+                                         order_axis=['index'])
         else:
             self.y_f = self.y_f.reindex(self.A_ff.index).fillna(0.0)
 
@@ -929,10 +926,14 @@ class LCAIO(object):
 
 # -----------------------SUPPORTING MODULE FUNCTIONS--------------------------
 #
-def concat_keep_order(frame_list, index, axis=0, order_axis=[0]):
+def concat_keep_order(frame_list, index, axis=0, order_axis=['index']):
     c = pd.concat(frame_list, axis).fillna(0.0)
-    for i in order_axis:
-        c = c.reindex_axis(index, axis=i)
+    if order_axis == ['index']:
+        c = c.reindex_axis(index = index)
+    elif order_axis == ['columns']:
+        c = c.reindex_axis(columns = index)
+    elif order_axis == ['index', 'columns'] or ['columns', 'index']:
+        c = c.reindex_axis(index = index, columns = index)
     return c
 
 def extract_header(header):
@@ -975,7 +976,7 @@ def generate_fullname(label, header, name_cols):
 def reorder_cols(a):
     cols = a.columns.difference(['FULLNAME', 'MATRIXID','UNIT'])
     sorted_cols = ['FULLNAME','MATRIXID'] + cols.tolist() + ['UNIT']
-    return a.reindex_axis(sorted_cols, 1)
+    return a.reindex(columns = sorted_cols)
 
 def i2s(a):
     a.index = a.index.to_series()
