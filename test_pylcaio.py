@@ -141,7 +141,7 @@ class Testpylcaio(unittest.TestCase):
         a.append_to_foreground(b)
 
         y_f = pd.DataFrame({0: {10005: 1.0, 10002: 0.0, 10: 0.0}})
-        assert_frames_equivalent(a.y_f, y_f)
+        assert_frames_equivalent(a.y_f, y_f, axis=[0])
 
 
     def test_import_and_export_matdict_keys_roundtrip(self):
@@ -243,9 +243,9 @@ class Testpylcaio(unittest.TestCase):
         b = pylcaio.LCAIO(1, verbose=False)
         b.extract_background(self.matdict)
         b.extract_foreground(B)
-        pdt.assert_frame_equal(a.A_ff, b.A_ff)
-        pdt.assert_frame_equal(a.F_f, b.F_f)
-        pdt.assert_frame_equal(a.y_f, b.y_f)
+        pdt.assert_frame_equal(a.A_ff, b.A_ff, axis= [0,1])
+        pdt.assert_frame_equal(a.F_f, b.F_f, axis= [0,1])
+        pdt.assert_frame_equal(a.y_f, b.y_f, axis= [0])
 
         assert(np.all(a.A_bf.values == b.A_bf.values))
         assert(np.all(a.PRO_f == b.PRO_f))
@@ -553,10 +553,17 @@ class Testpylcaio(unittest.TestCase):
         assert_frames_equivalent(d, d0)
 
 #=========================================================
-def assert_frames_equivalent(df1, df2, **kwds):
-    pdt.assert_frame_equal(df1.sort_index().sort(axis=1),
-                           df2.sort_index().sort(axis=1),
-                           **kwds)
+def assert_frames_equivalent(df1, df2, axis = [1],**kwds):
+    for ax in axis:
+        if ax == 0:
+            lvl1 = len(df1.index.names)
+            lvl2 = len(df2.index.names)
+        if ax == 1:
+            lvl1 = len(df1.columns.names)
+            lvl2 = len(df2.columns.names)
+        df1 = df1.sort_index(axis = ax, level=range(lvl1))
+        df2 = df2.sort_index(axis = ax, level=range(lvl2))
+    pdt.assert_frame_equal(df1, df2, **kwds)
 
 if __name__ == '__main__':
         unittest.main()

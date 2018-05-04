@@ -69,6 +69,7 @@ class LCAIO(object):
     ---------------
     - extract_background()
     - extract_foreground()
+    - extract_foreground_from_parser()
     - extract_io_background_from_pymrio()
     - to_matfile()
 
@@ -274,7 +275,7 @@ class LCAIO(object):
         try:
             # Treat datasource as filename
             matdict = sio.loadmat(datasource)
-        except OSError:
+        except :
             # Treat datasource as matlab dictionnary
             matdict = datasource
 
@@ -313,7 +314,7 @@ class LCAIO(object):
         try:
             # Treat datasource as filename
             matdict = sio.loadmat(datasource)
-        except OSError:
+        except :
             # Treat datasource as matlab dictionnary
             matdict = datasource
 
@@ -783,7 +784,7 @@ class LCAIO(object):
 
             index = np.array([list(r) for r in self.A_ff.index])
             index[:, index_col] += shift
-            index = pd.MultiIndex.from_array(index.T)
+            index = pd.MultiIndex.from_arrays(index.T)
 
             self.PRO_f.index = index
             self.A_ff.index = index
@@ -929,11 +930,11 @@ class LCAIO(object):
 def concat_keep_order(frame_list, index, axis=0, order_axis=['index']):
     c = pd.concat(frame_list, axis).fillna(0.0)
     if order_axis == ['index']:
-        c = c.reindex_axis(index = index)
+        c = c.reindex(index = index)
     elif order_axis == ['columns']:
-        c = c.reindex_axis(columns = index)
+        c = c.reindex(columns = index)
     elif order_axis == ['index', 'columns'] or ['columns', 'index']:
-        c = c.reindex_axis(index = index, columns = index)
+        c = c.reindex(index = index, columns = index)
     return c
 
 def extract_header(header):
