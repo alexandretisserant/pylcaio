@@ -182,6 +182,7 @@ class LCAIO(object):
                  )
         return a.reindex_axis(self.PRO.index, 0).reindex_axis(self.PRO.index,1
                                                               ).fillna(0.0)
+
     @property
     def F(self):
         """ Normalized extensions for whole system"""
@@ -340,8 +341,46 @@ class LCAIO(object):
             self.y_f = pd.DataFrame(data=np.zeros((self.A_ff.shape[0], 1)),
                                     index=self.PRO_f.index)
             self.log.info("Defined empty final demand from foreground y_f")
+            
+    def extract_foreground_from_parser(self, parser_object, overwrite=True):
+        """ Extract LCA foreground from parser object that was used to 
+        read in foreground data from a file (typically an excel). The object must 
+        follow pylcaio names and must have properties PRO_f, A_ff, A_bf, F_f, 
+        and optionally y_f. They must be pandas.DataFrames or Series. They do 
+        not have to be full (i.e. A_bf having all background processes), as the 
+        matrices are matched during the concatenation of A, F, y. However their 
+        row and columns labels must exactly match the ones of the background data 
+        (labels of A_bb, F_b).
+        The matrices from the perser object are deepcopied to not mutate its state
+        
+        NB! this should be done after calling the background data first!
 
+        Args
+        ----
+        * parser_object: object created by the parser
+                         must follow pylcaio nomenclature and matrices should be
+                         pandas dataframes/series
+        * overwrite: By default, overwrite any previously read label in the
+                     object attributes
 
+        """
+        if not self.A_bb.index.values.tolist() and not self.A_bb.colums.values.tolist() and self.A_bb.values == (0,0):
+            raise ValueError('you should load a background system before trying to load your foreground!')
+            
+        # check if it matches:
+        self.__check_foreground_parser_data(parser_object)
+        
+        # then assign:
+        self.PRO_f = copy.deepcopy(parser_object.PRO_f)
+        self.A_ff = copy.deepcopy(parser_object.A_ff)
+        self.A_bf = copy.deepcopy(parser_object.A_bf)
+        self.F_f = copy.deepcopy(parser_object.F_f)
+        try:
+            self.y_f = copy.deepcopy(parser_object.y_f)
+        except:
+            self.y_f = pd.DataFrame(data=np.zeros((self.A_ff.shape[0], 1)),
+                                    index=self.PRO_f.index)
+            self.log.info("Defined empty final demand from foreground y_f")
 
     def extract_io_background_from_pymrio(self, mrio, pro_name_cols=None,
             str_name_cols=None,reconcile=True):
@@ -583,6 +622,37 @@ class LCAIO(object):
 
 # -------------------------MANIPULATE LCA INVENTORIES--------------------------
 #
+    def __check_foreground_parser_data(self, parser_object):
+        parser_object_properties = parser_object.__dict__
+        required_foreground_data = ['PRO_f', 'A_bf', 'A_ff', 'F_f']
+        missing_prop = []
+        not_df_series = []
+        for req_prop in required_foreground_data:
+            # check if req_prop is in object_parser properties, if not append to missing
+            try:
+                df = isinstance(parser_object_properties[req_prop], pd.DataFrame)
+                series = isinstance(parser_object_properties[req_prop], pd.Series)
+                # check if the req_prop is a pandas df/series, if not append to not_df_series
+                if not df or series:
+                    not_df_series.append(req_prop)
+            except KeyError:
+                missing_prop.append(req_prop)
+        
+        if missing_prop:
+            raise ValueError('The foreground data is missing {}'.format(missing_prop))
+            
+        if not_df_series:
+            raise ValueError('{} are not provided as pandas DataFrames/Series'.format(not_df_series))
+        
+        # check that the indexes matches for the background processes and stressors
+        if any([True if i not in self.PRO_b.index.tolist() else False
+                for i in parser_object.A_bf.index.values.tolist()]):
+            raise ValueError('Some background process in A_bf are not found in PRO_b')
+        if any([True if i not in self.STR.index.tolist() else False 
+                for i in parser_object.F_f.index.values.tolist()]):
+            raise ValueError('Some stressors in F_f are not found in STR')
+
+
     def __reconcile_ids(self, io_label, arda_label, header):
 
         # calculate smallest id not conflicting with that of arda_label
