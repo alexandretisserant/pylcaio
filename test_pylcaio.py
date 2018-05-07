@@ -19,12 +19,11 @@ class Testpylcaio(unittest.TestCase):
         self.matdict = {}
 
         # A 2X2 FOREGROUND
-
+        self.matdict['PRO_header'] = np.array([['FULL NAME', 'MATRIXID','UNIT']])
         self.matdict['PRO_f'] = np.array([['s+orm', 10005, 'kg'],
                                           ['Batt Packing', 10002, 'kg']],
                                           dtype=object)
 
-        self.matdict['PRO_header'] = np.array([['FULL NAME', 'MATRIXID','UNIT']])
 
         self.matdict['A_ff'] = scipy.sparse.csc_matrix([[0, 1],
                                                         [10, 11]])

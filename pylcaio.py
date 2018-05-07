@@ -637,7 +637,7 @@ class LCAIO(object):
                 missing_prop.append(req_prop)
         
         if missing_prop:
-            raise ValueError('The foreground data is missing {}'.format(missing_prop))
+            raise KeyError('The foreground data is missing {}'.format(missing_prop))
             
         if not_df_series:
             raise ValueError('{} are not provided as pandas DataFrames/Series'.format(not_df_series))
@@ -645,10 +645,10 @@ class LCAIO(object):
         # check that the indexes matches for the background processes and stressors
         if any([True if i not in self.PRO_b.index.tolist() else False
                 for i in parser_object.A_bf.index.values.tolist()]):
-            raise ValueError('Some background process in A_bf are not found in PRO_b')
+            raise KeyError('Some background process in A_bf are not found in PRO_b')
         if any([True if i not in self.STR.index.tolist() else False 
                 for i in parser_object.F_f.index.values.tolist()]):
-            raise ValueError('Some stressors in F_f are not found in STR')
+            raise KeyError('Some stressors in F_f are not found in STR')
 
 
     def __reconcile_ids(self, io_label, arda_label, header):
